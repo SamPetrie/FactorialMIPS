@@ -1,0 +1,124 @@
+.data 0x0
+#
+# global variables here
+input: .space 21 #$a0 is address of string
+newline: .asciiz "\n"
+test: .asciiz "here"
+
+.text 0x3000
+.globl main
+
+main:
+
+ori     $sp, $0, 0x2ffc     # Initialize stack pointer to the top word below .text
+                            # The first value on stack will actually go at 0x2ff8
+                            #   because $sp is decremented first.
+addi    $fp, $sp, -4        # Set $fp to the start of main's stack frame
+
+Lwhile:
+
+	li $v0, 8
+	la $a0, input 
+	li $a1, 21
+	syscall
+	
+	jal a_to_i
+	
+	move $a0, $t0
+	
+	jal factorial
+	
+	beq $v0, $0, Lendw
+	
+	ori $a0, $v0, 0
+	li $v0, 1
+	syscall
+	
+	li $v0, 4	#print new line
+	la $a0, newline
+	syscall
+	
+	j Lwhile
+	
+Lendw:
+	li $v0, 1
+	addi $a0, $0, 1
+	syscall
+	
+exit_from_main:
+ori     $v0, $0, 10     # System call code 10 for exit
+syscall                 # Exit the program
+end_of_main:
+
+
+.globl a_to_i
+
+a_to_i:
+
+addi $sp, $sp, -8
+sw $ra, 4($sp)#0fp
+sw $fp, 0($sp)#-4fp
+
+addiu $fp, $sp, 4
+
+addi $t1, $0, 0 # i = 0
+add $t0, $0, $0 #converted = 0
+
+Lfor:
+	#la $a0, -8($fp) #a0 = input
+	#la $v0, -12($fp) #v0 = 0
+	#la $t1, -8($fp) #i=0
+	
+	#sll $t3, $t1, 2
+	
+	lb $t2, input($t1) #a0[i]
+	
+	blt $t2, 48, Lendfor #check valid char
+	bgt $t2, 57, Lendfor
+	
+	mul $t0, $t0, 10
+	addi $t0, $t0, -48
+	add $t0, $t0, $t2
+	
+	#li $v0, 1
+	#add $a0, $t0, $0
+	#syscall
+	
+	addi $t1, $t1, 1
+	
+	j Lfor
+	
+Lendfor:
+	lw $ra, 0($fp)
+	lw $fp, -4($fp)
+	addiu $sp, $sp, 8
+	jr $ra
+end_of_a_to_i:
+
+.globl factorial
+
+factorial:
+
+addi $sp, $sp, -8
+sw $ra, 4($sp)
+sw $a0, 0($sp)
+
+slti $t0, $a0, 2
+beq $t0, $0, LforFact
+add $v0, $0, $a0
+beq $0, $0, rtn
+
+#move $t0, $a0 #address of input moved to $t0
+
+#addiu $fp, $sp, 4
+
+LforFact:
+	
+	addi $a0, $a0, -1 #n-1
+	jal factorial
+	lw $a0, 0($sp)
+	mul $v0, $v0, $a0#n*factorial(n-1)
+rtn:
+	lw $ra, 4($sp)
+	addi $sp, $sp, 8
+	jr $ra
